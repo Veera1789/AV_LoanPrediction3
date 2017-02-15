@@ -1,67 +1,73 @@
-# Loan Prediction 3 Hackathon - Analytics vidhya - file 1
-# V9 Base Log Regression, Var imp, EDA, Feat engg - 
+# Loan Prediction 3 Hackathon - Analytics vidhya 
+# AV Article Code Version
 
 library(caret)
 library(mice)
 library(gmodels)
 library(dummies)
+library(RANN)
+library(randomForest)
 
+set.seed(1)
 #### Reading Files
-setwd("C:\\Users\\User\\Google Drive\\Personal_Veera\\Hackathons\\av\\Loanprediction3")
-train75<-read.csv("train75.csv",header = T)
-train75$Credit_History<-as.factor(train75$Credit_History)
-# Removing Loan Ids from the training set
-train75<-train75[,-13]
-test25<-read.csv("test25.csv",header = T)
-test25$Credit_History<-as.factor(test25$Credit_History)
+setwd("C:\\Users\\User\\Dropbox\\temp\\Hackathons\\AV\\Loanprediction3\\data")
+train<-read.csv("train.csv",header = T)
+str(train)
+sum(is.na(train))
 ################
-ch<-dummy(train75$Credit_History,sep="_")
-pa<-dummy(train75$Property_Area,sep="_")
-Mar<-dummy(train75$Married,sep="_")
-edn<-dummy(train75$Education,sep="_")
-emp<-dummy(train75$Self_Employed,sep="_")
-traindata<-cbind(data.frame(ch),data.frame(pa),inc_loan_ratio=train75$income_loanrati,overall_income=train75$Overallincome,data.frame(Mar),term=train75$Loan_Amount_Term,data.frame(edn),data.frame(emp),status=train75$Loan_Status)
+#Imputing missing values using median
+preProcValues <- preProcess(train, method = c("medianImpute","center","scale"))
+library('RANN')
+data_processed <- predict(preProcValues, train)
+sum(is.na(data_processed))
+
+# Splitting data into two parts
+#Spliting training set into two parts based on outcome: 75% and 25%
+index <- createDataPartition(data_processed$Loan_Status, p=0.75, list=FALSE)
+trainSet <- data_processed[ index,]
+testSet <- data_processed[-index,]
 
 
+#Defining the training controls for multiple models
+fitControl <- trainControl(
+  method = "cv",
+  number = 5,
+  savePredictions = 'final',
+  classProbs = T)
 
-#########
-ch<-dummy(test$Credit_History,sep="_")
-pa<-dummy(test$Property_Area,sep="_")
-Mar<-dummy(test$Married,sep="_")
-edn<-dummy(test$Education,sep="_")
-emp<-dummy(test$Self_Employed,sep="_")
-testdata<-cbind(data.frame(ch),data.frame(pa),inc_loan_ratio=test$income_loanratio,overall_income=test$Overallincome,data.frame(Mar),term=test$Loan_Amount_Term,data.frame(edn),data.frame(emp))
-length(testdata$Credit_History_0)
-
-
-
-
-
-ch=NULL
-pa=NULL
-Mar=NULL
-edn=NULL
-emp=NULL
+#Defining the predictors and outcome
+predictors<-c("Credit_History", "LoanAmount", "Loan_Amount_Term", "ApplicantIncome",
+              "CoapplicantIncome")
+outcomeName<-'Loan_Status'
+######## Building Model
 
 
+##################################################################################################
+#Training the random forest model
+model_rf<-train(trainSet[,predictors],trainSet[,outcomeName],method='rf',trControl=fitControl,tuneLength=3)
 
-################
+#Predicting using random forest model
+testSet$pred_rf<-predict(object = model_rf,testSet[,predictors])
 
-######## Buildling Model
+#Checking the accuracy of the random forest model
+confusionMatrix(testSet$Loan_Status,testSet$pred_rf)
 
-model1<-train(status~.,data=traindata,method="glm",family = "binomial")
-#model1<-train(Loan_Status~.,data=train,method="glm",family = "binomial")
-summary(model1)
-varImp(model1)
-pred<-predict(model1,test25)
-CrossTable(pred,test25$Loan_Status,prop.r = F,prop.c = T,digits = 2,prop.chisq = F)
 
+###################################################################################################
+
+
+##################################################################################################
 
 # Prediction
+
+# Random Forest
 test<-read.csv("test.csv",header = T)
-test$Credit_History<-as.factor(test$Credit_History)
-output<-predict(model1,test)
-Submission<-data.frame(Loan_ID=test$Loan_ID,Loan_Status=output,stringsAsFactors=FALSE)
+preProcValues_test <- preProcess(test, method = c("medianImpute","center","scale"))
+data_processed_test <- predict(preProcValues_test, test)
+sum(is.na(data_processed_test))
+#test$Credit_History<-as.factor(test$Credit_History)
+data_processed_test$pred_rf<-predict(object = model_rf,data_processed_test[,predictors])
+Submission<-data.frame(Loan_ID=data_processed_test$Loan_ID,Loan_Status=data_processed_test$pred_rf,stringsAsFactors=FALSE)
 summary(Submission)
 write.csv(Submission,file="Submission.csv",row.names = F)
 
