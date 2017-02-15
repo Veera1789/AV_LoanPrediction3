@@ -65,6 +65,15 @@ confusionMatrix(testSet$Loan_Status,testSet$pred_knn)
 
 ##################################################################################################
 
+#Training the Logistic regression model
+model_lr<-train(trainSet[,predictors],trainSet[,outcomeName],method='glm',trControl=fitControl,tuneLength=3)
+
+#Predicting using knn model
+testSet$pred_lr<-predict(object = model_lr,testSet[,predictors])
+
+#Checking the accuracy of the random forest model
+confusionMatrix(testSet$Loan_Status,testSet$pred_lr)
+#################################################################################################
 # Prediction
 test<-read.csv("test.csv",header = T)
 preProcValues_test <- preProcess(test, method = c("medianImpute","center","scale"))
@@ -83,5 +92,11 @@ Submission<-data.frame(Loan_ID=data_processed_test$Loan_ID,Loan_Status=data_proc
 summary(Submission)
 write.csv(Submission,file="Submission.csv",row.names = F)
 
+
+# Logistic  Prediction
+data_processed_test$pred_lr<-predict(object = model_lr,data_processed_test[,predictors])
+Submission<-data.frame(Loan_ID=data_processed_test$Loan_ID,Loan_Status=data_processed_test$pred_lr,stringsAsFactors=FALSE)
+summary(Submission)
+write.csv(Submission,file="Submission.csv",row.names = F)
 
 
