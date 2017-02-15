@@ -54,20 +54,32 @@ confusionMatrix(testSet$Loan_Status,testSet$pred_rf)
 
 
 ###################################################################################################
+#Training the knn model
+model_knn<-train(trainSet[,predictors],trainSet[,outcomeName],method='knn',trControl=fitControl,tuneLength=3)
 
+#Predicting using knn model
+testSet$pred_knn<-predict(object = model_knn,testSet[,predictors])
+
+#Checking the accuracy of the  KNN model
+confusionMatrix(testSet$Loan_Status,testSet$pred_knn)
 
 ##################################################################################################
 
 # Prediction
-
-# Random Forest
 test<-read.csv("test.csv",header = T)
 preProcValues_test <- preProcess(test, method = c("medianImpute","center","scale"))
 data_processed_test <- predict(preProcValues_test, test)
 sum(is.na(data_processed_test))
-#test$Credit_History<-as.factor(test$Credit_History)
+
+# Random Forest
 data_processed_test$pred_rf<-predict(object = model_rf,data_processed_test[,predictors])
 Submission<-data.frame(Loan_ID=data_processed_test$Loan_ID,Loan_Status=data_processed_test$pred_rf,stringsAsFactors=FALSE)
+summary(Submission)
+write.csv(Submission,file="Submission.csv",row.names = F)
+
+# KNN Prediction
+data_processed_test$pred_knn<-predict(object = model_knn,data_processed_test[,predictors])
+Submission<-data.frame(Loan_ID=data_processed_test$Loan_ID,Loan_Status=data_processed_test$pred_knn,stringsAsFactors=FALSE)
 summary(Submission)
 write.csv(Submission,file="Submission.csv",row.names = F)
 
