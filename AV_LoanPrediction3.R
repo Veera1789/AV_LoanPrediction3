@@ -80,13 +80,25 @@ data_processed_test$pred_rf_prob<-predict(object = model_rf,data_processed_test[
 data_processed_test$pred_knn_prob<-predict(object = model_knn,data_processed_test[,predictors],type='prob')
 data_processed_test$pred_lr_prob<-predict(object = model_lr,data_processed_test[,predictors],type='prob')
 
+# Predicting Outcome - Classification 
+data_processed_test$pred_rf<-predict(object = model_rf,data_processed_test[,predictors])
+data_processed_test$pred_knn<-predict(object = model_knn,data_processed_test[,predictors])
+data_processed_test$pred_lr<-predict(object = model_lr,data_processed_test[,predictors])
+
+
+#Averaging
 #Taking average of predictions
 data_processed_test$pred_avg<-(data_processed_test$pred_rf_prob$Y+data_processed_test$pred_knn_prob$Y+data_processed_test$pred_lr_prob$Y)/3
-
 #Splitting into binary classes at 0.5
 data_processed_test$pred_avg<-as.factor(ifelse(data_processed_test$pred_avg>0.5,'Y','N'))
 
+
+#Weightage
+data_processed_test$pred_weightage<-as.factor(ifelse((data_processed_test$pred_rf=='Y' & data_processed_test$pred_knn=='Y'),'Y',ifelse((data_processed_test$pred_rf=='Y' & data_processed_test$pred_lr=='Y'),'Y',ifelse((data_processed_test$pred_knn=='Y' & data_processed_test$pred_lr=='Y'),'Y','N'))))
+
+
+
 #Writing Files
-Submission<-data.frame(Loan_ID=data_processed_test$Loan_ID,Loan_Status=data_processed_test$pred_avg,stringsAsFactors=FALSE)
+Submission<-data.frame(Loan_ID=data_processed_test$Loan_ID,Loan_Status=data_processed_test$pred_weightage,stringsAsFactors=FALSE)
 summary(Submission)
 write.csv(Submission,file="Submission.csv",row.names = F)
